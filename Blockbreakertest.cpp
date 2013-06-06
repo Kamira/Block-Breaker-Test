@@ -67,8 +67,8 @@ int main(int argc, char* args[]){
           Box_Width         = 40,
           Box_Height        = 5,
     //Ball
-          Ball_Width         = 1,
-          Ball_Height        = 1,
+          Ball_Width         = 10,
+          Ball_Height        = 10,
           Ball_Center_X      = (float)Window_X / 2,
           Ball_Center_Y      = Box_Center_Y - Box_Height - Ball_Height -1,
     //Speed
@@ -78,8 +78,8 @@ int main(int argc, char* args[]){
     bool left  = false,
          right = false;
     //Brick
-    int Brick_Number_X  = 40,
-        Brick_Number_Y  = 10;
+    int Brick_Number_X  = 100,
+        Brick_Number_Y  = 50;
     float Brick_Width   = (float)Window_X / Brick_Number_X,
           Brick_Height  = 5;
     //Brick elements
@@ -126,7 +126,7 @@ int main(int argc, char* args[]){
                         if(!GameStart){
                             GameStart = true;
                             Vel_X = 0.8;
-                            Vel_Y = -2;
+                            Vel_Y = -0.8;
                         }
                     }
                 }
@@ -168,6 +168,8 @@ int main(int argc, char* args[]){
             Vel_Y = 0;
             Box_Center_X = (float)Window_X /2;
             Box_Center_Y = (float)Window_Y -10;
+            Ball_Height = 10;
+            Ball_Width  = 10;
             Ball_Center_X = (float)Window_X/2;
             Ball_Center_Y = Box_Center_Y - Ball_Height - Box_Height -1;
             for(int n=0;n < BRICKS;n++){bricks[n].isBreak=false;}
@@ -177,13 +179,14 @@ int main(int argc, char* args[]){
                         Box_Center_X,Box_Center_Y,Box_Width,Box_Height) ){
             Vel_Y = -Vel_Y;
 
-            Vel_X = fabs(Box_Center_X-Ball_Center_X) / Box_Width * 10;
+            Vel_X = fabs(Box_Center_X-Ball_Center_X) / Box_Width * 5;
             if(Box_Center_X-Ball_Center_X > 0){
                 Vel_X = -Vel_X;
             }
 
-
-            Vel_Y = Vel_Y * 1.1;
+            Ball_Height = Ball_Height * 0.99;
+            Ball_Width  = Ball_Width * 0.99;
+            Vel_Y = Vel_Y * 1.01;
         }
         Ball_Center_X += Vel_X;
         //*****************************************
