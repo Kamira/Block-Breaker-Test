@@ -1,33 +1,45 @@
 /*
--lSDLmain -lSDL -lGL
+-lmingw32 -lSDLmain -lSDL -lopengl32 -lglu32
 */
 
 #include "SDL.h"
 #include "SDL_opengl.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include <iostream>
 
-bool checkcollision(float Ax, float Ay, float Aw, float Ah, float Bx, float By, float Bw, float Bh){
-    if( Ay+Ah < By ) return false;
-    else if (Ay > By+Bh) return false;
-    else if (Ax+Aw < Bx) return false;
-    else if (Ax > Bx+Bw) return false;
+bool collisionCC(float A_Center_X, float A_Center_Y, float A_Width, float A_Height,
+                 float B_Center_X, float B_Center_Y, float B_Width, float B_Height){
+    if      ( A_Center_Y + A_Height < B_Center_Y - B_Height ) return false;
+    else if ( A_Center_Y - A_Height > B_Center_Y + B_Height ) return false;
+    else if ( A_Center_X + A_Width  < B_Center_X - B_Width  ) return false;
+    else if ( A_Center_X - A_Width  > B_Center_X + B_Width  ) return false;
+    return true;
+}
 
+bool collisionCXY(float A_Center_X, float A_Center_Y, float A_Width, float A_Height,
+                  float B_LeftTop_X, float B_LeftTop_Y, float B_Width, float B_Height){
+    if      ( A_Center_Y + A_Height < B_LeftTop_Y ) return false;
+    else if ( A_Center_Y - A_Height > B_LeftTop_Y + B_Height ) return false;
+    else if ( A_Center_X + A_Width  < B_LeftTop_X ) return false;
+    else if ( A_Center_X - A_Width  > B_LeftTop_X + B_Width  ) return false;
     return true;
 }
 
 struct Brick{
     float x;
     float y;
-    float width;
-    float height;
     bool isBreak;
 };
 
 int main(int argc, char* args[]){
-    SDL_Init(SDL_INIT_EVERYTHING);
 
+    int Window_X = 600,
+        Window_Y = 400;
+
+    //Window Init
+    SDL_Init(SDL_INIT_EVERYTHING);
     SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8);
     SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8);
     SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8);
@@ -35,57 +47,54 @@ int main(int argc, char* args[]){
     SDL_GL_SetAttribute( SDL_GL_BUFFER_SIZE, 32);
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 16);
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1);
-
-    SDL_WM_SetCaption("Test Window", NULL);
-
-    SDL_SetVideoMode(600,400,32,SDL_OPENGL);
-
+    SDL_WM_SetCaption("Test Title", NULL);                //Windows Title
+    SDL_SetVideoMode(Window_X,Window_Y,32,SDL_OPENGL);    //Windows Size
     glClearColor(1,1,1,1);
-
-    glViewport(0,0,600,400);
-
+    glViewport(0,0,Window_X,Window_Y);
     glShadeModel(GL_SMOOTH);
-
     glMatrixMode(GL_PROJECTION);
-
-
     glLoadIdentity();
-
     glDisable(GL_DEPTH_TEST);
 
-    bool isRunning = true;
+    //for running
+    bool isRunning = true,GameStart = false;
     SDL_Event event;
 
 
-    float myX = 260;
-    float myY = 385;
-    float myW = 80;
-    float myH = 10;
-    bool left = false, right = false;
-
-
-    //The Ball
-    float ballX = 299;
-    float ballY = 385;
-    float ballWH = 5;
+    //Box
+    float Box_Center_X      = (float)Window_X / 2,
+          Box_Center_Y      = (float)Window_Y - 10,
+          Box_Width         = 40,
+          Box_Height        = 5,
+    //Ball
+          Ball_Width         = 1,
+          Ball_Height        = 1,
+          Ball_Center_X      = (float)Window_X / 2,
+          Ball_Center_Y      = Box_Center_Y - Box_Height - Ball_Height -1,
     //Speed
-    float vellX = 0.1;
-    float vellY = -0.1;
-
+          Vel_X = 0,
+          Vel_Y = 0;
+    //Box Situation
+    bool left  = false,
+         right = false;
+    //Brick
+    int Brick_Number_X  = 40,
+        Brick_Number_Y  = 10;
+    float Brick_Width   = (float)Window_X / Brick_Number_X,
+          Brick_Height  = 5;
     //Brick elements
-    const static int BRICKS = 1003;
+    const static int BRICKS = Brick_Number_X * Brick_Number_Y;
     Brick bricks[BRICKS];
-
-    for ( int n = 0, x = 5, y = 10; n < BRICKS; n++, x+=10 ){
-      if ( x+10 > 600 )
+    float x = 0, y = 10;
+    //Brick Init
+    for ( int n = 0; n < BRICKS; n++, x+=Brick_Width ){
+      if ( x+Brick_Width > Window_X )
         {
-          x = 5;
-          y += 10;
+          x = 0;
+          y += Brick_Height;
         }
       bricks[n].x = x;
       bricks[n].y = y;
-      bricks[n].width = 10;
-      bricks[n].height = 10;
       bricks[n].isBreak = false;
     }
 
@@ -113,64 +122,88 @@ int main(int argc, char* args[]){
                     else if (event.key.keysym.sym == SDLK_RIGHT){
                         right = false;
                     }
+                    else if (event.key.keysym.sym == SDLK_SPACE){
+                        if(!GameStart){
+                            GameStart = true;
+                            Vel_X = 0.8;
+                            Vel_Y = -2;
+                        }
+                    }
                 }
         }
         //LOGIC
         if (left){
-            myX -= 0.2;}
-        else if (right){
-            myX += 0.2;
-        }
-
-        if (myX < 0){
-            myX = 0;
-        }else if (myX+myW > 600){
-            myX = 600-myW;
-        }
-
-
-        if((ballX < 0)||(ballX+ballWH > 600)){
-            vellX = -vellX;
-        }
-        if(ballY < 0){
-            vellY = -vellY;
-        }else if (ballY+ballWH > 400){
-            myX = 260;
-            myY = 385;
-            myW = 80;
-            myH = 10;
-            ballX = 385;
-            ballY = 299;
-            ballWH = 5;
-            vellX = 0.1;
-            vellY = -0.1;
-
-            for ( int n = 0, x = 5, y = 10; n < BRICKS; n++, x+=10 ){bricks[n].isBreak = false;}
-        }
-
-
-        if( checkcollision(ballX,ballY,ballWH,ballWH,myX,myY,myW,myH) ){
-            vellY = -vellY;
-        }
-
-        ballX += vellX;
-        for(int n=0; n < BRICKS; n++ ){
-            if (checkcollision(ballX,ballY,ballWH,ballWH,bricks[n].x,bricks[n].y,bricks[n].width,bricks[n].height)){
-                if(!bricks[n].isBreak){
-                    bricks[n].isBreak=true;
-                    vellX = -vellX;
-                }
-
+            Box_Center_X -= 5;
+            if(!GameStart){
+               Ball_Center_X -= 5;
             }
         }
-        ballY += vellY;
+        else if (right){
+            Box_Center_X += 5;
+            if(!GameStart){
+               Ball_Center_X += 5;
+            }
+        }
+        //*************************************
+        if (Box_Center_X - Box_Width < 0){
+            Box_Center_X = Box_Width;
+            if(!GameStart){
+                Ball_Center_X = Box_Center_X;
+            }
+        }else if (Box_Center_X + Box_Width > Window_X){
+            Box_Center_X = Window_X - Box_Width;
+            if(!GameStart){
+                Ball_Center_X = Box_Center_X;
+            }
+        }
+        //**************************************
+        if ((Ball_Center_X - Ball_Width < 0)||(Ball_Center_X + Ball_Width > Window_X)){
+            Vel_X = -Vel_X;
+        }
+        if(Ball_Center_Y - Ball_Height < 0){
+            Vel_Y = -Vel_Y;
+        }else if (Ball_Center_Y + Ball_Height > Window_Y){
+            GameStart = false;
+            Vel_X = 0;
+            Vel_Y = 0;
+            Box_Center_X = (float)Window_X /2;
+            Box_Center_Y = (float)Window_Y -10;
+            Ball_Center_X = (float)Window_X/2;
+            Ball_Center_Y = Box_Center_Y - Ball_Height - Box_Height -1;
+            for(int n=0;n < BRICKS;n++){bricks[n].isBreak=false;}
+        }
+        //*****************************************
+        if( collisionCC(Ball_Center_X,Ball_Center_Y,Ball_Width,Ball_Height,
+                        Box_Center_X,Box_Center_Y,Box_Width,Box_Height) ){
+            Vel_Y = -Vel_Y;
+
+            Vel_X = fabs(Box_Center_X-Ball_Center_X) / Box_Width * 10;
+            if(Box_Center_X-Ball_Center_X > 0){
+                Vel_X = -Vel_X;
+            }
+
+
+            Vel_Y = Vel_Y * 1.1;
+        }
+        Ball_Center_X += Vel_X;
+        //*****************************************
         for(int n=0; n < BRICKS; n++ ){
-            if (checkcollision(ballX,ballY,ballWH,ballWH,bricks[n].x,bricks[n].y,bricks[n].width,bricks[n].height)){
+            if (collisionCXY(Ball_Center_X,Ball_Center_Y,Ball_Width,Ball_Height,
+                             bricks[n].x,bricks[n].y,Brick_Width,Brick_Height)){
                 if(!bricks[n].isBreak){
                     bricks[n].isBreak=true;
-                    vellY = -vellY;
+                    Vel_X = -Vel_X;
                 }
-
+            }
+        }
+        Ball_Center_Y += Vel_Y;
+        for(int n=0; n < BRICKS; n++ ){
+            if (collisionCXY(Ball_Center_X,Ball_Center_Y,Ball_Width,Ball_Height,
+                             bricks[n].x,bricks[n].y,Brick_Width,Brick_Height)){
+                if(!bricks[n].isBreak){
+                    bricks[n].isBreak=true;
+                    Vel_Y = -Vel_Y;
+                }
             }
         }
 
@@ -180,37 +213,32 @@ int main(int argc, char* args[]){
 
         glPushMatrix();
 
-        glOrtho(0,600,400,0,-1,1);
+        glOrtho(0,Window_X,Window_Y,0,-1,1);
 
         glColor4ub(0,0,0,255);
 
         glBegin(GL_QUADS);
-
-        glVertex2f(myX,myY);
-        glVertex2f(myX+myW,myY);
-        glVertex2f(myX+myW,myY+myH);
-        glVertex2f(myX,myY+myH);
-
+        glVertex2f(Box_Center_X-Box_Width,Box_Center_Y-Box_Height);
+        glVertex2f(Box_Center_X+Box_Width,Box_Center_Y-Box_Height);
+        glVertex2f(Box_Center_X+Box_Width,Box_Center_Y+Box_Height);
+        glVertex2f(Box_Center_X-Box_Width,Box_Center_Y+Box_Height);
         glEnd();
 
         glBegin(GL_QUADS);
-
-        glVertex2f(ballX,ballY);
-        glVertex2f(ballX+ballWH,ballY);
-        glVertex2f(ballX+ballWH,ballY+ballWH);
-        glVertex2f(ballX,ballY+ballWH);
-
+        glVertex2f(Ball_Center_X-Ball_Width,Ball_Center_Y-Ball_Height);
+        glVertex2f(Ball_Center_X+Ball_Width,Ball_Center_Y-Ball_Height);
+        glVertex2f(Ball_Center_X+Ball_Width,Ball_Center_Y+Ball_Height);
+        glVertex2f(Ball_Center_X-Ball_Width,Ball_Center_Y+Ball_Height);
         glEnd();
 
         glBegin(GL_QUADS); //Render the bricks
-
         for ( int n = 0; n < BRICKS; n++ )
         {
             if(!bricks[n].isBreak){
             glVertex2f(bricks[n].x,bricks[n].y);
-            glVertex2f(bricks[n].x+bricks[n].width,bricks[n].y);
-            glVertex2f(bricks[n].x+bricks[n].width,bricks[n].y+bricks[n].height);
-            glVertex2f(bricks[n].x,bricks[n].y+bricks[n].height);
+            glVertex2f(bricks[n].x+Brick_Width,bricks[n].y);
+            glVertex2f(bricks[n].x+Brick_Width,bricks[n].y+Brick_Height);
+            glVertex2f(bricks[n].x,bricks[n].y+Brick_Height);
           }
         }
         glEnd();
