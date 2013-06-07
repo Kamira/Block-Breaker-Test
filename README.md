@@ -1,2 +1,4 @@
-Block-Breaker-Test
+Block Breaker in C
 ==================
+
+learning programing language
