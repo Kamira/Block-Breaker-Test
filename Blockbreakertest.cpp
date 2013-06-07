@@ -131,6 +131,9 @@ int main(int argc, char* args[]){
                     }
                 }
         }
+
+        //AutoPlay
+        Box_Center_X = Ball_Center_X;
         //LOGIC
         if (left){
             Box_Center_X -= 5;
@@ -178,38 +181,52 @@ int main(int argc, char* args[]){
         if( collisionCC(Ball_Center_X,Ball_Center_Y,Ball_Width,Ball_Height,
                         Box_Center_X,Box_Center_Y,Box_Width,Box_Height) ){
             Vel_Y = -Vel_Y;
-
-            Vel_X = fabs(Box_Center_X-Ball_Center_X) / Box_Width * 5;
+            if (!(fabs(Box_Center_X-Ball_Center_X)<2)){
+            Vel_X = fabs(Box_Center_X-Ball_Center_X) / Box_Width * 5;}
             if(Box_Center_X-Ball_Center_X > 0){
                 Vel_X = -Vel_X;
             }
 
-            Ball_Height = Ball_Height * 0.99;
-            Ball_Width  = Ball_Width * 0.99;
-            Vel_Y = Vel_Y * 1.01;
+            Ball_Height = Ball_Height * 0.9999;
+            Ball_Width  = Ball_Width * 0.9999;
+            Vel_Y = Vel_Y * 1.0001;
         }
+        Ball_Center_Y += Vel_Y;
+        //*****************************************
+        for(int n=0; n < BRICKS; n++ ){
+            if (collisionCXY(Ball_Center_X,Ball_Center_Y,Ball_Width,Ball_Height,
+                             bricks[n].x,bricks[n].y,Brick_Width,Brick_Height)){
+                if(!bricks[n].isBreak){bricks[n].isBreak=true;
+
+                    float y1=bricks[n].y, y2=bricks[n].y+Brick_Height;
+                    if(Ball_Center_Y+Ball_Height >= y1 ){
+                        Vel_Y = fabs(Vel_Y);
+                    }else if (Ball_Center_Y-Ball_Height <= y2){
+                        Vel_Y = -fabs(Vel_Y);
+                    }
+
+
+                }
+            }
+        }
+
         Ball_Center_X += Vel_X;
         //*****************************************
         for(int n=0; n < BRICKS; n++ ){
             if (collisionCXY(Ball_Center_X,Ball_Center_Y,Ball_Width,Ball_Height,
                              bricks[n].x,bricks[n].y,Brick_Width,Brick_Height)){
-                if(!bricks[n].isBreak){
-                    bricks[n].isBreak=true;
-                    Vel_X = -Vel_X;
-                }
-            }
-        }
-        Ball_Center_Y += Vel_Y;
-        for(int n=0; n < BRICKS; n++ ){
-            if (collisionCXY(Ball_Center_X,Ball_Center_Y,Ball_Width,Ball_Height,
-                             bricks[n].x,bricks[n].y,Brick_Width,Brick_Height)){
-                if(!bricks[n].isBreak){
-                    bricks[n].isBreak=true;
-                    Vel_Y = -Vel_Y;
-                }
-            }
-        }
+                if(!bricks[n].isBreak){bricks[n].isBreak=true;
 
+                    float x1=bricks[n].x, x2=bricks[n].x+Brick_Width;
+
+                    if(Ball_Center_X+Ball_Width >= x1){
+                        Vel_X = -fabs(Vel_X);
+                    }else if (Ball_Center_X-Ball_Width <= x2){
+                        Vel_X = fabs(Vel_X);
+                    }
+                }
+            }
+        }
 
         //Screen Render
         glClear(GL_COLOR_BUFFER_BIT);
